@@ -1,6 +1,5 @@
 """Tests for parse_path, get_path, set_path."""
 
-import pytest
 from jsoncurrent import get_path, parse_path, set_path
 
 

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import pytest
+import json
+
 from jsoncurrent import Collector, Emitter, JsonCurrentError, StreamingChunk
 
 
@@ -230,23 +232,19 @@ class TestEmitterCollectorIntegration:
         return collector.value
 
     def test_flat_object(self):
-        import json
         src = '{"title":"Hello","count":3,"flag":true}'
         result = self._round_trip(src)
         assert result == json.loads(src)
 
     def test_nested_object(self):
-        import json
         src = '{"a":{"b":{"c":42}}}'
         assert self._round_trip(src) == json.loads(src)
 
     def test_array_of_objects(self):
-        import json
         src = '{"cards":[{"term":"a","def":"b"},{"term":"c","def":"d"}]}'
         assert self._round_trip(src) == json.loads(src)
 
     def test_with_root_prefix(self):
-        import json
         src = '{"title":"Hi"}'
         result = self._round_trip(src, root="prediction")
         assert result == {"prediction": {"title": "Hi"}}

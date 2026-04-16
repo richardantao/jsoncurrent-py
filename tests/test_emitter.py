@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+import json
 from jsoncurrent import Collector, Emitter, StreamingChunk
 
 
@@ -113,7 +114,6 @@ class TestNestedObjects:
         assert next(p.value for p in patches if p.path == "meta.id") == 1
 
     def test_full_reconstruction_matches_json(self):
-        import json
         src = '{"a":{"b":{"c":"deep"}}}'
         patches = emit_all(src)
         assert assemble(patches) == json.loads(src)
@@ -131,12 +131,12 @@ class TestArrays:
         assert container.value == []
 
     def test_array_of_strings(self):
-        import json
         src = '{"tags":["a","b","c"]}'
         assert assemble(emit_all(src)) == json.loads(src)
 
     def test_array_of_objects(self):
-        import json
+        src = '{"cards":[{"term":"hello"},{"term":"world"}]}'
+        assert assemble(emit_all(src)) == json.loads(src)
         src = '{"cards":[{"term":"hello"},{"term":"world"}]}'
         assert assemble(emit_all(src)) == json.loads(src)
 
@@ -145,7 +145,6 @@ class TestArrays:
         assert any(p.path == "cards[0].term" for p in patches)
 
     def test_array_of_numbers(self):
-        import json
         src = '{"nums":[1,2,3]}'
         assert assemble(emit_all(src)) == json.loads(src)
 
@@ -184,12 +183,10 @@ class TestStreaming:
         assert assemble(patches) == {"n": 42}
 
     def test_nested_object_char_by_char(self):
-        import json
         src = '{"a":{"b":"c"}}'
         assert assemble(emit_char_by_char(src)) == json.loads(src)
 
     def test_array_char_by_char(self):
-        import json
         src = '{"cards":[{"term":"hi"}]}'
         assert assemble(emit_char_by_char(src)) == json.loads(src)
 
