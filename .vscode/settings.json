@@ -1,0 +1,7 @@
+{
+	"editor.formatOnSave": true,
+	"python.analysis.useLibraryCodeForTypes": true,
+	"python.analysis.typeCheckingMode": "off",
+	"python.analysis.autoImportCompletions": true,
+	"python.missingPackage.severity": "Error",
+}
