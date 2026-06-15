@@ -21,7 +21,7 @@ class Collector(TypedEmitter, Generic[T]):
 
     **Events**
 
-    - ``change(state: Partial[T])`` — emitted after each patch is applied
+    - ``change(state: Partial[T], path: str, op: str)`` — emitted after each data patch is applied
     - ``complete(state: T)`` — emitted when :meth:`complete` is called
     - ``pathstart(path: str, value: Any)`` — first patch on a new path
     - ``pathcomplete(path: str, value: Any)`` — ``complete`` op received for path
@@ -30,7 +30,7 @@ class Collector(TypedEmitter, Generic[T]):
     Example::
 
         collector: Collector[ReportDocument] = Collector()
-        collector.on("change", lambda state: render(state))
+        collector.on("change", lambda state, path, op: render(state))
         collector.on("complete", lambda final: save(final))
 
         for chunk in sse_stream:
@@ -157,7 +157,7 @@ class Collector(TypedEmitter, Generic[T]):
 
         # Shallow clone so listeners always receive a new reference
         self._state = {**self._working}
-        self.emit("change", self._state)
+        self.emit("change", self._state, path, op)
 
     def _run_middleware(
         self,

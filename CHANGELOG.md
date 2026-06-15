@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2.0
+
+### Changed
+
+- `change` event now receives `path` and `op` as second and third arguments:
+	`change(state, path, op)` instead of `change(state)`
+- `pathstart` and `pathcomplete` signatures are unchanged
+
+### Migration
+
+```python
+# Before
+collector.on("change", lambda state: render(state))
+
+# After
+collector.on("change", lambda state, path, op: render(state))
+```
+
 ## 0.1.0
 
 Initial release.

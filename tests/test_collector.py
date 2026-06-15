@@ -53,15 +53,18 @@ class TestCollectorEvents:
     def test_change_event_fires_after_each_patch(self):
         changes = []
         c: Collector = Collector()
-        c.on("change", changes.append)
+        c.on("change", lambda state, path, op: changes.append((dict(state), path, op)))
         c.consume(StreamingChunk(path="x", value=1, op="add"))
         c.consume(StreamingChunk(path="x", value=2, op="add"))
         assert len(changes) == 2
+        assert changes[-1][0] == {"x": 2}
+        assert changes[-1][1] == "x"
+        assert changes[-1][2] == "add"
 
     def test_change_event_state_is_shallow_copy(self):
         snapshots = []
         c: Collector = Collector()
-        c.on("change", lambda s: snapshots.append(dict(s)))
+        c.on("change", lambda s, _path, _op: snapshots.append(dict(s)))
         c.consume(StreamingChunk(path="x", value=1, op="add"))
         c.consume(StreamingChunk(path="x", value=2, op="add"))
         assert snapshots[0]["x"] == 1
@@ -253,7 +256,7 @@ class TestEmitterCollectorIntegration:
         emitter = Emitter()
         collector: Collector = Collector()
         changes = []
-        collector.on("change", lambda s: changes.append(dict(s)))
+        collector.on("change", lambda s, _path, _op: changes.append(dict(s)))
         emitter.on("patch", collector.consume)
 
         # Simulate token-by-token streaming
@@ -274,7 +277,7 @@ class TestEmitterCollectorIntegration:
         emitter = Emitter()
         collector: Collector = Collector()
         changes = []
-        collector.on("change", changes.append)
+        collector.on("change", lambda state, path, op: changes.append((dict(state), path, op)))
         emitter.on("patch", collector.consume)
 
         emitter.write('{"msg":"Hel')
@@ -283,4 +286,5 @@ class TestEmitterCollectorIntegration:
 
         # At least two changes: one for first string token, one for append
         assert len(changes) >= 2
+        assert all(len(change) == 3 for change in changes)
         assert collector.value == {"msg": "Hello"}

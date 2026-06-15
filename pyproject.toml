@@ -1,18 +1,17 @@
 [project]
 name = "jsoncurrent"
-version = "0.1.0"
+version = "0.2.0"
 description = "Parse streamed JSON data incrementally."
 authors = [{ name = "Richard Antao", email = "rich@vitalearning.ca" }]
 requires-python = ">=3.10"
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
 keywords = ["json", "streaming", "llm", "parser", "patch", "openai", "anthropic"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Topic :: Text Processing :: General",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -29,14 +28,14 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/richardantao/jsoncurrent-py"
+Homepage = "https://jsoncurrent.com"
 Repository = "https://github.com/richardantao/jsoncurrent-py"
 Issues = "https://github.com/richardantao/jsoncurrent-py/issues"
 Changelog = "https://github.com/richardantao/jsoncurrent-py/blob/main/CHANGELOG.md"
 
 [build-system]
-requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.setuptools.packages.find]
 where = ["src"]
