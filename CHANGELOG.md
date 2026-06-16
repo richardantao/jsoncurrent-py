@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.4.0
+## v0.3.0
 
 ### Added
 
@@ -25,7 +25,7 @@ from jsoncurrent import Collector
 collector = Collector(flush=lambda: None)
 ```
 
-## 0.3.0
+## v0.2.0
 
 ### Changed
 
@@ -43,42 +43,7 @@ collector.on("change", lambda state: render(state))
 collector.on("change", lambda state, path, op: render(state))
 ```
 
-# v0.2.0
-
-## Changed
-
-- React subpath type renamed: `UseJsonPulseOptions` → `UseJsonCurrentOptions`
-- React subpath return type renamed: `UseJsonPulseReturn` → `UseJsonCurrentReturn`
-- Error class renamed: `JsonPulseError` → `JsonCurrentError`
-
-## Removed
-
-- Legacy type names: `UseJsonPulseOptions`, `UseJsonPulseReturn`
-- Legacy error class: `JsonPulseError`
-
-## Migration
-
-Update type imports from `jsoncurrent/react`:
-
-```typescript
-// Before
-import type { UseJsonPulseOptions } from 'jsoncurrent/react'
-
-// After
-import type { UseJsonCurrentOptions } from 'jsoncurrent/react'
-```
-
-Replace `instanceof` checks:
-
-```typescript
-// Before
-if (err instanceof JsonPulseError) { ... }
-
-// After
-if (err instanceof JsonCurrentError) { ... }
-```
-
-## 0.1.0
+## v0.1.0
 
 Initial release.
 
