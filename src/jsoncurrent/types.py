@@ -6,8 +6,12 @@ from typing import Any, Callable, Literal
 Op = Literal["add", "append", "insert", "complete"]
 """Patch operation type."""
 
-MiddlewareFn = Callable[["StreamingChunk", Callable[["StreamingChunk"], None]], None]
+MiddlewareFn = Callable[["StreamingChunk",
+                         Callable[["StreamingChunk"], None]], None]
 """Middleware function: receives the current patch and a ``next`` callable."""
+
+FlushFn = Callable[[], None]
+"""Optional callback used to yield between queued change emissions."""
 
 
 @dataclass

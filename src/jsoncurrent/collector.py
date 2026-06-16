@@ -4,7 +4,7 @@ from typing import Any, Generic, TypeVar
 
 from .base import TypedEmitter
 from .path import get_path, set_path
-from .types import JsonCurrentError, MiddlewareFn, StreamingChunk
+from .types import FlushFn, JsonCurrentError, MiddlewareFn, Op, StreamingChunk
 
 T = TypeVar("T")
 
@@ -51,13 +51,18 @@ class Collector(TypedEmitter, Generic[T]):
         collector.use(mirror_summary)
     """
 
-    def __init__(self) -> None:
+    def __init__(self, flush: FlushFn | None = None) -> None:
         super().__init__()
         self._working: dict[str, Any] = {}
         self._state: dict[str, Any] = {}
         self._middleware: list[MiddlewareFn] = []
         self._is_complete: bool = False
         self._seen_paths: set[str] = set()
+        self._flush = flush
+        self._chunk_queue: list[StreamingChunk] = []
+        self._processing_chunks = False
+        self._change_queue: list[tuple[dict[str, Any], str, Op]] = []
+        self._draining_changes = False
 
     # -------------------------------------------------------------------------
     # Middleware
@@ -79,13 +84,59 @@ class Collector(TypedEmitter, Generic[T]):
                 "Cannot consume patches after complete() has been called. "
                 "Call reset() to reuse this Collector."
             )
-        self._run_middleware(chunk, self._apply_patch)
+        self._chunk_queue.append(chunk)
+        self._process_chunk_queue()
+
+    def _process_chunk_queue(self) -> None:
+        if self._processing_chunks:
+            return
+        self._processing_chunks = True
+
+        try:
+            while self._chunk_queue:
+                next_chunk = self._chunk_queue.pop(0)
+                self._run_middleware(next_chunk, self._apply_patch)
+        finally:
+            self._processing_chunks = False
+            if self._flush is not None and self._change_queue:
+                self._drain_change_queue()
+
+    def _drain_change_queue(self) -> None:
+        if self._draining_changes:
+            return
+        self._draining_changes = True
+
+        try:
+            while self._change_queue:
+                state, path, op = self._change_queue.pop(0)
+                self.emit("change", state, path, op)
+
+                if self._change_queue and self._flush is not None:
+                    try:
+                        self._flush()
+                    except JsonCurrentError as err:
+                        self.emit("error", err)
+                    except Exception as exc:
+                        self.emit("error", JsonCurrentError(
+                            "Flush callback failed", exc))
+        finally:
+            self._draining_changes = False
+
+    def _drain_change_queue_now(self) -> None:
+        queued = self._change_queue
+        self._change_queue = []
+        for state, path, op in queued:
+            self.emit("change", state, path, op)
 
     def complete(self) -> None:
         """Signal that the stream has ended. Emits ``complete`` with final state."""
         if self._is_complete:
             return
         self._is_complete = True
+
+        if self._change_queue:
+            self._drain_change_queue_now()
+
         self.emit("complete", self._state)
 
     # -------------------------------------------------------------------------
@@ -116,6 +167,10 @@ class Collector(TypedEmitter, Generic[T]):
         self._state = {}
         self._is_complete = False
         self._seen_paths.clear()
+        self._chunk_queue = []
+        self._processing_chunks = False
+        self._change_queue = []
+        self._draining_changes = False
         return self
 
     # -------------------------------------------------------------------------
@@ -133,7 +188,8 @@ class Collector(TypedEmitter, Generic[T]):
         # Fire pathstart BEFORE mutation so the listener sees the initial type.
         if op in ("add", "insert") and path not in self._seen_paths:
             self._seen_paths.add(path)
-            start_value = ([] if isinstance(value, list) else {}) if isinstance(value, (dict, list)) else value
+            start_value = ([] if isinstance(value, list) else {}
+                           ) if isinstance(value, (dict, list)) else value
             self.emit("pathstart", path, start_value)
 
         try:
@@ -141,7 +197,8 @@ class Collector(TypedEmitter, Generic[T]):
                 set_path(self._working, path, value)
             elif op == "append":
                 current = get_path(self._working, path, "")
-                set_path(self._working, path, (current or "") + value) # pyright: ignore[reportOperatorIssue]
+                # pyright: ignore[reportOperatorIssue]
+                set_path(self._working, path, (current or "") + value)
             elif op == "insert":
                 arr = get_path(self._working, path, [])
                 set_path(self._working, path, list(arr) + [value])
@@ -151,13 +208,19 @@ class Collector(TypedEmitter, Generic[T]):
             self.emit("error", err)
             return
         except Exception as exc:
-            err = JsonCurrentError(f'Failed to apply patch at path "{path}"', exc)
+            err = JsonCurrentError(
+                f'Failed to apply patch at path "{path}"', exc)
             self.emit("error", err)
             return
 
         # Shallow clone so listeners always receive a new reference
         self._state = {**self._working}
-        self.emit("change", self._state, path, op)
+
+        if self._flush is None:
+            self.emit("change", self._state, path, op)
+            return
+
+        self._change_queue.append((self._state, path, op))
 
     def _run_middleware(
         self,

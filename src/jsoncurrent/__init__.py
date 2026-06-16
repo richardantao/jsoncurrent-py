@@ -3,12 +3,13 @@
 from .collector import Collector
 from .emitter import Emitter
 from .path import get_path, parse_path, set_path
-from .types import JsonCurrentError, MiddlewareFn, Op, StreamingChunk
+from .types import FlushFn, JsonCurrentError, MiddlewareFn, Op, StreamingChunk
 
 __all__ = [
     "StreamingChunk",
     "Op",
     "MiddlewareFn",
+    "FlushFn",
     "JsonCurrentError",
     "Emitter",
     "Collector",

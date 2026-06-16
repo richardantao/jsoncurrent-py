@@ -53,7 +53,8 @@ class TestCollectorEvents:
     def test_change_event_fires_after_each_patch(self):
         changes = []
         c: Collector = Collector()
-        c.on("change", lambda state, path, op: changes.append((dict(state), path, op)))
+        c.on("change", lambda state, path,
+             op: changes.append((dict(state), path, op)))
         c.consume(StreamingChunk(path="x", value=1, op="add"))
         c.consume(StreamingChunk(path="x", value=2, op="add"))
         assert len(changes) == 2
@@ -221,6 +222,53 @@ class TestCollectorReset:
 
 
 # ---------------------------------------------------------------------------
+# Flush callback
+# ---------------------------------------------------------------------------
+
+class TestCollectorFlushCallback:
+    def test_flush_paces_between_queued_change_events(self):
+        flush_calls = []
+        seen = []
+
+        c: Collector = Collector(flush=lambda: flush_calls.append("flush"))
+
+        # Fan out one incoming chunk into multiple data patches so the
+        # collector has multiple queued change events to pace.
+        def mirror(patch, next_fn):
+            next_fn(patch)
+            next_fn(
+                StreamingChunk(
+                    path=patch.path.replace("title", "subtitle"),
+                    value=patch.value,
+                    op=patch.op,
+                )
+            )
+
+        c.use(mirror)
+        c.on("change", lambda state, _path, _op: seen.append(dict(state)))
+
+        c.consume(StreamingChunk(path="title", value="Hello", op="add"))
+
+        assert seen == [{"title": "Hello"}, {
+            "title": "Hello", "subtitle": "Hello"}]
+        assert len(flush_calls) == 1
+
+    def test_complete_fires_after_all_change_events(self):
+        events = []
+        c: Collector = Collector(flush=lambda: None)
+
+        c.on("change", lambda _state, _path, _op: events.append("change"))
+        c.on("complete", lambda _state: events.append("complete"))
+
+        c.consume(StreamingChunk(path="title", value="A", op="add"))
+        c.consume(StreamingChunk(path="title", value="B", op="append"))
+        c.complete()
+
+        assert events[-1] == "complete"
+        assert events.count("change") == 2
+
+
+# ---------------------------------------------------------------------------
 # End-to-end: Emitter → Collector
 # ---------------------------------------------------------------------------
 
@@ -277,7 +325,8 @@ class TestEmitterCollectorIntegration:
         emitter = Emitter()
         collector: Collector = Collector()
         changes = []
-        collector.on("change", lambda state, path, op: changes.append((dict(state), path, op)))
+        collector.on("change", lambda state, path,
+                     op: changes.append((dict(state), path, op)))
         emitter.on("patch", collector.consume)
 
         emitter.write('{"msg":"Hel')

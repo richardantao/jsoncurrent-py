@@ -1,6 +1,31 @@
 # Changelog
 
-## 0.2.0
+## v0.4.0
+
+### Added
+
+- Optional collector flush pacing API:
+	- New `flush` callback on `Collector`
+	- New exported type alias: `FlushFn`
+- Flush semantics when `flush` is provided:
+	- Pace only `change` event emission
+	- Keep `pathstart`, `pathcomplete`, and `error` immediate (not flush-paced)
+	- Run middleware on queued chunks before patch application
+	- Drain queued `change` events immediately before stream `complete`
+
+### Migration
+
+No breaking API changes.
+
+To opt into paced `change` emissions, pass `flush`:
+
+```python
+from jsoncurrent import Collector
+
+collector = Collector(flush=lambda: None)
+```
+
+## 0.3.0
 
 ### Changed
 
@@ -16,6 +41,41 @@ collector.on("change", lambda state: render(state))
 
 # After
 collector.on("change", lambda state, path, op: render(state))
+```
+
+# v0.2.0
+
+## Changed
+
+- React subpath type renamed: `UseJsonPulseOptions` → `UseJsonCurrentOptions`
+- React subpath return type renamed: `UseJsonPulseReturn` → `UseJsonCurrentReturn`
+- Error class renamed: `JsonPulseError` → `JsonCurrentError`
+
+## Removed
+
+- Legacy type names: `UseJsonPulseOptions`, `UseJsonPulseReturn`
+- Legacy error class: `JsonPulseError`
+
+## Migration
+
+Update type imports from `jsoncurrent/react`:
+
+```typescript
+// Before
+import type { UseJsonPulseOptions } from 'jsoncurrent/react'
+
+// After
+import type { UseJsonCurrentOptions } from 'jsoncurrent/react'
+```
+
+Replace `instanceof` checks:
+
+```typescript
+// Before
+if (err instanceof JsonPulseError) { ... }
+
+// After
+if (err instanceof JsonCurrentError) { ... }
 ```
 
 ## 0.1.0
